@@ -214,19 +214,19 @@ export class GoogleMapsService {
         totalDistance += distance;
         
         // Estimate travel time based on distance (assuming average speed of 30 km/h in city)
-        const travelTimeMinutes = Math.round((distance / 1000) * 2); // 2 minutes per km
-        cumulativeDuration += travelTimeMinutes;
+        const travelTimeSeconds = Math.round((distance / 1000) * 2 * 60); // Convert to seconds: 2 minutes per km
+        cumulativeDuration += travelTimeSeconds;
         
         // Add 5 minutes for stop/loading time at the next stop (except for last stop)
-        if (i < optimizedStops.length - 1) {
-          cumulativeDuration += 5;
+        if (i < optimizedStops.length - 2) {
+          cumulativeDuration += 5 * 60; // Convert 5 minutes to seconds
         }
       }
     }
 
     return {
       totalDistance: Math.round(totalDistance), // Keep in meters
-      totalDuration: cumulativeDuration * 60, // Convert to seconds
+      totalDuration: cumulativeDuration,
       waypoints,
       polyline: '',
     };

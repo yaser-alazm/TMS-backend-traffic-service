@@ -317,18 +317,18 @@ export class RouteOptimizationService {
       totalDistance += distance;
       
       // Estimate travel time based on distance (assuming average speed of 30 km/h in city)
-      const travelTimeMinutes = Math.round((distance / 1000) * 2); // 2 minutes per km
-      totalDuration += travelTimeMinutes;
+      const travelTimeSeconds = Math.round((distance / 1000) * 2 * 60); // Convert to seconds: 2 minutes per km
+      totalDuration += travelTimeSeconds;
       
       // Add 5 minutes for stop/loading time (except for the final segment)
       if (i < stops.length - 2) {
-        totalDuration += 5;
+        totalDuration += 5 * 60; // Convert 5 minutes to seconds
       }
     }
 
     return {
       totalDistance: Math.round(totalDistance),
-      totalDuration: totalDuration * 60, // Convert to seconds
+      totalDuration: totalDuration, 
     };
   }
 
