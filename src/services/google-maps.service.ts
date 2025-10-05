@@ -163,22 +163,89 @@ export class GoogleMapsService {
   }
 
   private getMockOptimizedRoute(stops: Array<{ latitude: number; longitude: number; address: string }>): OptimizedRoute {
-    // Calculate mock distance and duration based on stops
-    const totalDistance = stops.length * 1000; // 1km per stop
-    const totalDuration = stops.length * 300; // 5 minutes per stop
-    
-    const waypoints = stops.map((stop, index) => ({
-      latitude: stop.latitude,
-      longitude: stop.longitude,
-      address: stop.address,
-      estimatedArrival: new Date(Date.now() + (index + 1) * 300000).toISOString(), // 5 minutes per stop
-    }));
+    if (stops.length < 2) {
+      return {
+        totalDistance: 0,
+        totalDuration: 0,
+        waypoints: stops.map(stop => ({
+          latitude: stop.latitude,
+          longitude: stop.longitude,
+          address: stop.address,
+          estimatedArrival: new Date().toISOString(),
+        })),
+        polyline: '',
+      };
+    }
+
+    // Calculate realistic distances between consecutive stops using Haversine formula
+    let totalDistance = 0;
+    let totalDuration = 0;
+    const waypoints: Array<{
+      latitude: number;
+      longitude: number;
+      address: string;
+      estimatedArrival: string;
+    }> = [];
+    let currentTime = Date.now();
+
+    for (let i = 0; i < stops.length; i++) {
+      const stop = stops[i];
+      
+      // Calculate distance to next stop (if not the last stop)
+      if (i < stops.length - 1) {
+        const nextStop = stops[i + 1];
+        const distance = this.calculateHaversineDistance(
+          stop.latitude, stop.longitude,
+          nextStop.latitude, nextStop.longitude
+        );
+        totalDistance += distance;
+        
+        // Estimate travel time based on distance (assuming average speed of 30 km/h in city)
+        const travelTimeMinutes = Math.round((distance / 1000) * 2); // 2 minutes per km
+        totalDuration += travelTimeMinutes;
+        
+        // Add 5 minutes for stop/loading time (except for last stop)
+        if (i < stops.length - 1) {
+          totalDuration += 5;
+        }
+      }
+
+      // Calculate estimated arrival time
+      const estimatedArrival = new Date(currentTime + (totalDuration * 60000));
+      
+      waypoints.push({
+        latitude: stop.latitude,
+        longitude: stop.longitude,
+        address: stop.address,
+        estimatedArrival: estimatedArrival.toISOString(),
+      });
+    }
 
     return {
-      totalDistance,
-      totalDuration,
+      totalDistance: Math.round(totalDistance),
+      totalDuration: totalDuration * 60, // Convert to seconds
       waypoints,
       polyline: '',
     };
+  }
+
+  /**
+   * Calculate distance between two points using Haversine formula
+   * Returns distance in meters
+   */
+  private calculateHaversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371000; // Earth's radius in meters
+    const dLat = this.toRadians(lat2 - lat1);
+    const dLon = this.toRadians(lon2 - lon1);
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRadians(lat1)) * Math.cos(this.toRadians(lat2)) * 
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  private toRadians(degrees: number): number {
+    return degrees * (Math.PI / 180);
   }
 }
