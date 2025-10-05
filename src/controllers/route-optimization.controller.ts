@@ -85,7 +85,14 @@ export class RouteOptimizationController {
     @Param('userId') userId: string,
     @Request() req: any,
   ) {
-    // Temporarily skip authentication for testing
+    const requestingUserId = req.user?.userId;
+    const userRoles = req.user?.roles || [];
+    // Only allow access if requesting own history, or if user is admin/fleet_manager
+    const isPrivileged = userRoles.includes('admin') || userRoles.includes('fleet_manager');
+    if (requestingUserId !== userId && !isPrivileged) {
+      throw new Error('Unauthorized access to route history');
+    }
+
     return this.routeOptimizationService.getRouteHistory(userId);
   }
 
