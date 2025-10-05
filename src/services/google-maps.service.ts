@@ -95,11 +95,9 @@ export class GoogleMapsService {
       const waypointsWithArrival = stops.map((stop, index) => {
         let estimatedArrival = new Date();
         
-        if (index > 0) {
-          // Add duration for previous legs
-          for (let i = 0; i < index; i++) {
-            estimatedArrival = new Date(estimatedArrival.getTime() + (route.legs[i]?.duration.value || 0) * 1000);
-          }
+        // Add duration for all legs up to this stop
+        for (let i = 0; i < index && i < route.legs.length; i++) {
+          estimatedArrival = new Date(estimatedArrival.getTime() + (route.legs[i]?.duration.value || 0) * 1000);
         }
 
         return {
@@ -191,6 +189,8 @@ export class GoogleMapsService {
     }> = [];
     let currentTime = Date.now();
 
+    let cumulativeDuration = 0; // Track duration up to each stop
+    
     for (let i = 0; i < optimizedStops.length; i++) {
       const stop = optimizedStops[i];
       
@@ -205,16 +205,16 @@ export class GoogleMapsService {
         
         // Estimate travel time based on distance (assuming average speed of 30 km/h in city)
         const travelTimeMinutes = Math.round((distance / 1000) * 2); // 2 minutes per km
-        totalDuration += travelTimeMinutes;
+        cumulativeDuration += travelTimeMinutes;
         
         // Add 5 minutes for stop/loading time (except for last stop)
         if (i < optimizedStops.length - 1) {
-          totalDuration += 5;
+          cumulativeDuration += 5;
         }
       }
 
-      // Calculate estimated arrival time
-      const estimatedArrival = new Date(currentTime + (totalDuration * 60000));
+      // Calculate estimated arrival time using cumulative duration up to this stop
+      const estimatedArrival = new Date(currentTime + (cumulativeDuration * 60000));
       
       waypoints.push({
         latitude: stop.latitude,
@@ -226,7 +226,7 @@ export class GoogleMapsService {
 
     return {
       totalDistance: Math.round(totalDistance), // Keep in meters
-      totalDuration: totalDuration * 60, // Convert to seconds
+      totalDuration: cumulativeDuration * 60, // Convert to seconds
       waypoints,
       polyline: '',
     };
