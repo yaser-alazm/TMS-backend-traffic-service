@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
-import { GoogleMapsService } from './google-maps.service';
+import { GoogleMapsService, OptimizedRoute } from './google-maps.service';
 import { KafkaService } from '@yatms/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RouteOptimizationGateway } from '../websocket/route-optimization.gateway';
@@ -371,17 +371,18 @@ export class RouteOptimizationService {
 
     this.logger.log(`Publishing event to Kafka: ${event.eventId}`);
     
-    this.kafkaService.publishEvent('route-optimization-events', event).then(() => {
+    try {
+      await this.kafkaService.publishEvent('route-optimization-events', event);
       this.logger.log(`Route optimization requested event published: ${event.eventId}`);
-    }).catch(error => {
-      this.logger.warn(`Failed to publish route optimization requested event: ${error.message}`);
-    });
+    } catch (error) {
+      this.logger.warn(`Failed to publish route optimization requested event: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   private async publishRouteOptimizedEvent(
     requestId: string,
     vehicleId: string,
-    optimizedRoute: OptimizedRouteResponse['optimizedRoute'],
+    optimizedRoute: OptimizedRoute,
     optimizationMetrics: OptimizationMetrics,
   ) {
     this.logger.log(`Starting to publish route optimized event for request ${requestId}`);
@@ -433,11 +434,12 @@ export class RouteOptimizationService {
       },
     };
 
-    this.kafkaService.publishEvent('route-update-events', event).then(() => {
+    try {
+      await this.kafkaService.publishEvent('route-update-events', event);
       this.logger.log(`Route update requested event published: ${event.eventId}`);
-    }).catch(error => {
-      this.logger.warn(`Failed to publish route update requested event: ${error.message}`);
-    });
+    } catch (error) {
+      this.logger.warn(`Failed to publish route update requested event: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   async getKafkaHealth() {
