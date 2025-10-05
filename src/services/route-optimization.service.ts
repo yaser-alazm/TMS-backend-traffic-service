@@ -62,11 +62,11 @@ export class RouteOptimizationService {
         optimizeRouteDto.preferences,
       );
 
-      // Calculate optimization metrics (simplified calculation)
-      const optimizationMetrics = this.calculateOptimizationMetrics(optimizedRoute);
+      // Calculate optimization metrics by comparing original vs optimized route
+      const optimizationMetrics = this.calculateOptimizationMetrics(optimizedRoute, optimizeRouteDto.stops);
 
       // Save optimized route
-      const savedRoute = await this.prisma.optimizedRoute.create({
+      await this.prisma.optimizedRoute.create({
         data: {
           requestId,
           vehicleId: optimizeRouteDto.vehicleId,
@@ -245,16 +245,106 @@ export class RouteOptimizationService {
     }
   }
 
-  private calculateOptimizationMetrics(optimizedRoute: OptimizedRouteResponse['optimizedRoute']) {
-    // Simplified calculation - in real implementation, compare with original route
-    const baseTime = optimizedRoute.totalDuration * 1.2; // Assume 20% improvement
-    const baseDistance = optimizedRoute.totalDistance * 1.15; // Assume 15% improvement
+  private calculateOptimizationMetrics(
+    optimizedRoute: OptimizedRouteResponse['optimizedRoute'],
+    originalStops: Array<{ latitude: number; longitude: number; address: string }>
+  ) {
+    // Calculate the original (unoptimized) route metrics
+    const originalRouteMetrics = this.calculateOriginalRouteMetrics(originalStops);
+    
+    // Calculate actual savings by comparing original vs optimized
+    const timeSavedSeconds = Math.round(originalRouteMetrics.totalDuration - optimizedRoute.totalDuration);
+    const distanceSavedMeters = originalRouteMetrics.totalDistance - optimizedRoute.totalDistance;
+    const distanceSavedKm = distanceSavedMeters / 1000;
+
+    // More realistic fuel consumption calculations
+    const totalDistanceKm = optimizedRoute.totalDistance / 1000;
+    const avgFuelConsumption = totalDistanceKm < 50 ? 10 : 7; // L/100km based on route type
+    const fuelSavedLiters = (distanceSavedKm * avgFuelConsumption) / 100;
+    
+    // Calculate CO2 emissions saved (assuming 2.3 kg CO2 per liter of gasoline)
+    const co2SavedKg = fuelSavedLiters * 2.3;
+    
+    // Calculate cost savings (assuming $1.50/L fuel cost and $25/hour driver cost)
+    const fuelCostPerLiter = 1.50;
+    const driverCostPerHour = 25;
+    const fuelCostSaved = fuelSavedLiters * fuelCostPerLiter;
+    const driverTimeSavedHours = timeSavedSeconds / 3600;
+    const driverCostSaved = driverTimeSavedHours * driverCostPerHour;
+    const totalCostSaved = fuelCostSaved + driverCostSaved;
+
+    // Calculate actual improvement percentages
+    const timeImprovementPercent = originalRouteMetrics.totalDuration > 0 
+      ? ((originalRouteMetrics.totalDuration - optimizedRoute.totalDuration) / originalRouteMetrics.totalDuration) * 100
+      : 0;
+    
+    const distanceImprovementPercent = originalRouteMetrics.totalDistance > 0
+      ? ((originalRouteMetrics.totalDistance - optimizedRoute.totalDistance) / originalRouteMetrics.totalDistance) * 100
+      : 0;
 
     return {
-      timeSaved: Math.round(baseTime - optimizedRoute.totalDuration),
-      distanceSaved: Math.round((baseDistance - optimizedRoute.totalDistance) * 100) / 100,
-      fuelSaved: Math.round((baseDistance - optimizedRoute.totalDistance) * 0.1 * 100) / 100, // Assume 0.1L per km
+      timeSaved: Math.max(0, timeSavedSeconds), // Ensure non-negative
+      distanceSaved: Math.max(0, Math.round(distanceSavedKm * 1000) / 1000), // Ensure non-negative
+      fuelSaved: Math.max(0, Math.round(fuelSavedLiters * 1000) / 1000), // Ensure non-negative
+      co2Saved: Math.max(0, Math.round(co2SavedKg * 1000) / 1000), // CO2 emissions saved in kg
+      costSaved: Math.max(0, Math.round(totalCostSaved * 100) / 100), // Total cost savings in USD
+      optimizationEfficiency: {
+        timeImprovement: Math.max(0, Math.round(timeImprovementPercent)),
+        distanceImprovement: Math.max(0, Math.round(distanceImprovementPercent)),
+        fuelEfficiency: Math.max(0, Math.round(distanceImprovementPercent)) // Fuel efficiency improvement = distance improvement
+      }
     };
+  }
+
+  private calculateOriginalRouteMetrics(stops: Array<{ latitude: number; longitude: number; address: string }>) {
+    if (stops.length < 2) {
+      return { totalDistance: 0, totalDuration: 0 };
+    }
+
+    let totalDistance = 0;
+    let totalDuration = 0;
+
+    // Calculate distance and time for original stop order (no optimization)
+    for (let i = 0; i < stops.length - 1; i++) {
+      const currentStop = stops[i];
+      const nextStop = stops[i + 1];
+      
+      const distance = this.calculateHaversineDistance(
+        currentStop.latitude, currentStop.longitude,
+        nextStop.latitude, nextStop.longitude
+      );
+      
+      totalDistance += distance;
+      
+      // Estimate travel time based on distance (assuming average speed of 30 km/h in city)
+      const travelTimeMinutes = Math.round((distance / 1000) * 2); // 2 minutes per km
+      totalDuration += travelTimeMinutes;
+      
+      // Add 5 minutes for stop/loading time (except for last stop)
+      if (i < stops.length - 1) {
+        totalDuration += 5;
+      }
+    }
+
+    return {
+      totalDistance: Math.round(totalDistance),
+      totalDuration: totalDuration * 60, // Convert to seconds
+    };
+  }
+
+  private calculateHaversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371000; // Earth's radius in meters
+    const dLat = this.toRadians(lat2 - lat1);
+    const dLon = this.toRadians(lon2 - lon1);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRadians(lat1)) * Math.cos(this.toRadians(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  private toRadians(degrees: number): number {
+    return degrees * (Math.PI / 180);
   }
 
   private async publishRouteOptimizationRequestedEvent(

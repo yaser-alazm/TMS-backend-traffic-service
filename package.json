@@ -32,7 +32,7 @@
     "@nestjs/websockets": "^11.0.1",
     "@prisma/client": "^6.16.2",
     "@types/cookie-parser": "^1.4.9",
-    "@yatms/common": "file:../common",
+    "@yatms/common": "^1.0.60",
     "axios": "^1.7.7",
     "cookie-parser": "^1.4.7",
     "jose": "^6.1.0",
