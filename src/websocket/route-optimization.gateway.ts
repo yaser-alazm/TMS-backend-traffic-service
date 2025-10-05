@@ -8,8 +8,11 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Logger } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { Logger, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import * as jwt from 'jsonwebtoken';
+import { CustomJWTPayload } from '@yatms/common';
+
 @WebSocketGateway({
   cors: {
     origin: process.env.CLIENT_URL || 'http://localhost:3000',
@@ -17,14 +20,23 @@ import { JwtService } from '@nestjs/jwt';
   },
   namespace: '/routes',
 })
+
 export class RouteOptimizationGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
 
   private readonly logger = new Logger(RouteOptimizationGateway.name);
   private connectedClients = new Map<string, Socket>();
-  constructor(private jwtService: JwtService) {
+  private publicKey: string;
+  private issuer: string;
+
+  constructor(
+    // private jwtService: JwtService,
+    private configService: ConfigService,
+  ) {
     this.logger.log('WebSocket gateway initialized');
+    this.publicKey = this.configService.get<string>('JWT_PUBLIC_KEY_PEM') || '';
+    this.issuer = this.configService.get<string>('AUTH_ISSUER') || 'yatms-user-service-dev';
   }
 
   async handleConnection(client: Socket) {
@@ -54,29 +66,34 @@ export class RouteOptimizationGateway implements OnGatewayConnection, OnGatewayD
         return;
       }
 
-      // For now, skip JWT verification to get the system working
-      // TODO: Implement proper JWT verification with RS256
-      this.logger.warn('JWT verification temporarily disabled for WebSocket connections');
-      
-      // Create a mock payload for testing
-      const payload = {
-        sub: 'temp-user-id',
-        email: 'temp@example.com',
-        roles: ['user']
-      };
+      // Verify JWT token with RS256
+      if (!this.publicKey) {
+        this.logger.error('JWT public key not configured');
+        throw new UnauthorizedException('JWT configuration error');
+      }
 
-      client.data.userId = payload.sub;
+      const payload = jwt.verify(token, this.publicKey, {
+        algorithms: ['RS256'],
+        issuer: this.issuer,
+      }) as CustomJWTPayload;
+
+      this.logger.log(`JWT verification successful for user ${payload.email}`);
+
+      client.data.userId = payload.userId;
       client.data.email = payload.email;
+      client.data.roles = payload.roles;
 
       this.connectedClients.set(client.id, client);
       this.logger.log(`Client ${client.id} connected for user ${payload.email}`);
 
       // Join user-specific room
-      client.join(`user:${payload.sub}`);
+      client.join(`user:${payload.userId}`);
       
       client.emit('connected', {
         message: 'Connected to route optimization updates',
-        userId: payload.sub,
+        userId: payload.userId,
+        email: payload.email,
+        roles: payload.roles,
       });
     } catch (error) {
       this.logger.error(`Authentication failed for client ${client.id}:`, error);
