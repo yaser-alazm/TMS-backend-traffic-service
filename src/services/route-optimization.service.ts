@@ -8,6 +8,8 @@ import {
   OptimizeRouteDto,
   RouteUpdateDto,
   OptimizedRouteResponse,
+  Waypoint,
+  OptimizationMetrics,
 } from '@yatms/common';
 import { RouteOptimizationStatus, RouteUpdateReason } from '@prisma/client';
 
@@ -208,12 +210,12 @@ export class RouteOptimizationService {
 
     try {
       // Create route update record
-      const routeUpdate = await this.prisma.routeUpdate.create({
+      await this.prisma.routeUpdate.create({
         data: {
           routeId,
           vehicleId,
           updateReason: updateDto.reason as RouteUpdateReason,
-          newWaypoints: route.waypoints as any, // Simplified - in real implementation, recalculate
+          newWaypoints: route.waypoints as Waypoint[], 
         },
       });
 
@@ -229,14 +231,21 @@ export class RouteOptimizationService {
         reason: updateDto.reason,
       });
 
-      return route;
+      return {
+        routeId,
+        vehicleId,
+        updateReason: updateDto.reason,
+        currentLocation: updateDto.currentLocation,
+        updatedAt: new Date().toISOString(),
+        message: 'Route update recorded successfully',
+      };
     } catch (error) {
       this.logger.error(`Failed to update route ${routeId}:`, error);
       throw error;
     }
   }
 
-  private calculateOptimizationMetrics(optimizedRoute: any) {
+  private calculateOptimizationMetrics(optimizedRoute: OptimizedRouteResponse['optimizedRoute']) {
     // Simplified calculation - in real implementation, compare with original route
     const baseTime = optimizedRoute.totalDuration * 1.2; // Assume 20% improvement
     const baseDistance = optimizedRoute.totalDistance * 1.15; // Assume 15% improvement
@@ -282,8 +291,8 @@ export class RouteOptimizationService {
   private async publishRouteOptimizedEvent(
     requestId: string,
     vehicleId: string,
-    optimizedRoute: any,
-    optimizationMetrics: any,
+    optimizedRoute: OptimizedRouteResponse['optimizedRoute'],
+    optimizationMetrics: OptimizationMetrics,
   ) {
     this.logger.log(`Starting to publish route optimized event for request ${requestId}`);
     
