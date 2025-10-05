@@ -46,13 +46,7 @@ export class RouteOptimizationGateway implements OnGatewayConnection, OnGatewayD
       let token: string | null = null;
       
       if (cookies) {
-        const cookiePairs = cookies.split(';');
-        const accessTokenCookie = cookiePairs.find(cookie => 
-          cookie.trim().startsWith('access_token=')
-        );
-        if (accessTokenCookie) {
-          token = accessTokenCookie.split('=')[1];
-        }
+        token = this.extractTokenFromCookies(cookies);
       }
       
       // Fallback to auth object or authorization header
@@ -104,6 +98,29 @@ export class RouteOptimizationGateway implements OnGatewayConnection, OnGatewayD
   handleDisconnect(client: Socket) {
     this.connectedClients.delete(client.id);
     this.logger.log(`Client ${client.id} disconnected`);
+  }
+
+  /**
+   * Extract JWT token from cookie string
+   */
+  private extractTokenFromCookies(cookieString: string): string | null {
+    try {
+      const cookiePairs = cookieString.split(';');
+      const accessTokenCookie = cookiePairs.find(cookie => 
+        cookie.trim().startsWith('access_token=')
+      );
+      
+      if (accessTokenCookie) {
+        // Properly extract the token value, handling JWT padding with = characters
+        const tokenValue = accessTokenCookie.substring('access_token='.length);
+        return tokenValue.trim();
+      }
+      
+      return null;
+    } catch (error) {
+      this.logger.error('Error parsing cookies:', error);
+      return null;
+    }
   }
 
   @SubscribeMessage('subscribe_route_updates')
