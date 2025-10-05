@@ -246,7 +246,7 @@ export class RouteOptimizationService {
   }
 
   private calculateOptimizationMetrics(
-    optimizedRoute: OptimizedRouteResponse['optimizedRoute'],
+    optimizedRoute: OptimizedRoute,
     originalStops: Array<{ latitude: number; longitude: number; address: string }>
   ) {
     // Calculate the original (unoptimized) route metrics
