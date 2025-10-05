@@ -314,7 +314,7 @@ export class RouteOptimizationService {
 
   private calculateOriginalRouteMetrics(stops: Array<{ latitude: number; longitude: number; address: string }>) {
     if (stops.length < 2) {
-      return { totalDistance: 0, totalDuration: 0 };
+      return null;
     }
 
     let totalDistance = 0;
