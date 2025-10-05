@@ -320,8 +320,8 @@ export class RouteOptimizationService {
       const travelTimeMinutes = Math.round((distance / 1000) * 2); // 2 minutes per km
       totalDuration += travelTimeMinutes;
       
-      // Add 5 minutes for stop/loading time (except for last stop)
-      if (i < stops.length - 1) {
+      // Add 5 minutes for stop/loading time (except for the final segment)
+      if (i < stops.length - 2) {
         totalDuration += 5;
       }
     }
