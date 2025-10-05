@@ -1,6 +1,5 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { JwtModule } from '@nestjs/jwt';
 import { Reflector } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -21,13 +20,6 @@ import { RolesGuard } from './guards/roles.guard';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env', '.env.local'],
-    }),
-    JwtModule.register({
-      publicKey: process.env.JWT_PUBLIC_KEY_PEM,
-      verifyOptions: {
-        algorithms: ['RS256'],
-        issuer: process.env.AUTH_ISSUER || 'yatms-user-service',
-      },
     }),
     KafkaModule,
   ],
