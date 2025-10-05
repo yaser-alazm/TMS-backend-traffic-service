@@ -195,7 +195,7 @@ export class GoogleMapsService {
       const stop = optimizedStops[i];
       
       // Calculate estimated arrival time using cumulative duration up to this stop
-      const estimatedArrival = new Date(currentTime + (cumulativeDuration * 60000));
+      const estimatedArrival = new Date(currentTime + (cumulativeDuration * 1000));
       
       waypoints.push({
         latitude: stop.latitude,
