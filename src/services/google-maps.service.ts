@@ -213,13 +213,17 @@ export class GoogleMapsService {
         );
         totalDistance += distance;
         
-        // Estimate travel time based on distance (assuming average speed of 30 km/h in city)
-        const travelTimeSeconds = Math.round((distance / 1000) * 2 * 60); // Convert to seconds: 2 minutes per km
+        // Estimate travel time based on distance
+        const AVERAGE_SPEED_KMH = 30; // Average city driving speed
+        const distanceKm = distance / 1000; // Convert meters to kilometers
+        const travelTimeHours = distanceKm / AVERAGE_SPEED_KMH; // Time in hours
+        const travelTimeSeconds = Math.round(travelTimeHours * 3600); // Convert to seconds
         cumulativeDuration += travelTimeSeconds;
         
-        // Add 5 minutes for stop/loading time at the next stop (except for last stop)
+        // Add stop/loading time at the next stop (except for last stop)
+        const STOP_LOADING_TIME_MINUTES = 5; // Time spent at each stop for loading/unloading
         if (i < optimizedStops.length - 2) {
-          cumulativeDuration += 5 * 60; // Convert 5 minutes to seconds
+          cumulativeDuration += STOP_LOADING_TIME_MINUTES * 60; 
         }
       }
     }

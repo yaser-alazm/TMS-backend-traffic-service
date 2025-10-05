@@ -252,6 +252,22 @@ export class RouteOptimizationService {
     // Calculate the original (unoptimized) route metrics
     const originalRouteMetrics = this.calculateOriginalRouteMetrics(originalStops);
     
+    // Handle case where original route metrics cannot be calculated
+    if (!originalRouteMetrics) {
+      return {
+        timeSaved: 0,
+        distanceSaved: 0,
+        fuelSaved: 0,
+        co2Saved: 0,
+        costSaved: 0,
+        optimizationEfficiency: {
+          timeImprovement: 0,
+          distanceImprovement: 0,
+          fuelEfficiency: 0,
+        }
+      };
+    }
+    
     // Calculate actual savings by comparing original vs optimized
     const timeSavedSeconds = Math.round(originalRouteMetrics.totalDuration - optimizedRoute.totalDuration);
     const distanceSavedMeters = originalRouteMetrics.totalDistance - optimizedRoute.totalDistance;
@@ -316,13 +332,17 @@ export class RouteOptimizationService {
       
       totalDistance += distance;
       
-      // Estimate travel time based on distance (assuming average speed of 30 km/h in city)
-      const travelTimeSeconds = Math.round((distance / 1000) * 2 * 60); // Convert to seconds: 2 minutes per km
+      // Estimate travel time based on distance
+      const AVERAGE_SPEED_KMH = 30; // Average city driving speed
+      const distanceKm = distance / 1000; // Convert meters to kilometers
+      const travelTimeHours = distanceKm / AVERAGE_SPEED_KMH; // Time in hours
+      const travelTimeSeconds = Math.round(travelTimeHours * 3600); // Convert to seconds
       totalDuration += travelTimeSeconds;
       
-      // Add 5 minutes for stop/loading time (except for the final segment)
+      // Add stop/loading time (except for the final segment)
+      const STOP_LOADING_TIME_MINUTES = 5; // Time spent at each stop for loading/unloading
       if (i < stops.length - 2) {
-        totalDuration += 5 * 60; // Convert 5 minutes to seconds
+        totalDuration += STOP_LOADING_TIME_MINUTES * 60; 
       }
     }
 
