@@ -407,7 +407,7 @@ export class RouteOptimizationService {
     this.logger.log(`Publishing route optimized event to Kafka: ${event.eventId}`);
     
     try {
-      await this.kafkaService.publishEvent('route-optimization-events', event)
+      await this.kafkaService.publishEvent('route-optimization-events', event);
       this.logger.log(`Route optimized event published: ${event.eventId}`);
     } catch (error) {
       this.logger.warn(`Failed to publish route optimized event: ${error instanceof Error ? error.message : String(error)}`);
