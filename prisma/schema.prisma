@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model RouteOptimizationRequest {
+  id               String    @id @default(uuid())
+  vehicleId        String
+  userId           String
+  stops            Json
+  preferences      Json
+  status           RouteOptimizationStatus @default(PENDING)
+  requestedAt      DateTime  @default(now())
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  completedAt      DateTime?
+  optimizedRoutes  OptimizedRoute[]
+
+  @@map("route_optimization_requests")
+}
+
+model OptimizedRoute {
+  id                   String    @id @default(uuid())
+  requestId            String
+  vehicleId            String
+  totalDistance        Float
+  totalDuration        Int
+  waypoints            Json
+  optimizationMetrics  Json
+  polyline             String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  request              RouteOptimizationRequest @relation(fields: [requestId], references: [id])
+  updates              RouteUpdate[]
+
+  @@map("optimized_routes")
+}
+
+model RouteUpdate {
+  id              String           @id @default(uuid())
+  routeId         String
+  vehicleId       String
+  updateReason    RouteUpdateReason
+  newWaypoints    Json
+  currentLocation Json?
+  createdAt       DateTime         @default(now())
+  route           OptimizedRoute   @relation(fields: [routeId], references: [id])
+
+  @@map("route_updates")
+}
+
+model TrafficCondition {
+  id          String            @id @default(uuid())
+  latitude    Float
+  longitude   Float
+  condition   TrafficConditionType
+  severity    TrafficSeverity
+  description String
+  source      String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@map("traffic_conditions")
+}
+
+enum RouteOptimizationStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum RouteUpdateReason {
+  TRAFFIC_CHANGE
+  DRIVER_REQUEST
+  EMERGENCY
+}
+
+enum TrafficConditionType {
+  CLEAR
+  SLOW
+  HEAVY
+  BLOCKED
+}
+
+enum TrafficSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
