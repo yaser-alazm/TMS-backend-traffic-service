@@ -194,6 +194,16 @@ export class GoogleMapsService {
     for (let i = 0; i < optimizedStops.length; i++) {
       const stop = optimizedStops[i];
       
+      // Calculate estimated arrival time using cumulative duration up to this stop
+      const estimatedArrival = new Date(currentTime + (cumulativeDuration * 60000));
+      
+      waypoints.push({
+        latitude: stop.latitude,
+        longitude: stop.longitude,
+        address: stop.address,
+        estimatedArrival: estimatedArrival.toISOString(),
+      });
+      
       // Calculate distance to next stop (if not the last stop)
       if (i < optimizedStops.length - 1) {
         const nextStop = optimizedStops[i + 1];
@@ -207,21 +217,11 @@ export class GoogleMapsService {
         const travelTimeMinutes = Math.round((distance / 1000) * 2); // 2 minutes per km
         cumulativeDuration += travelTimeMinutes;
         
-        // Add 5 minutes for stop/loading time (except for last stop)
+        // Add 5 minutes for stop/loading time at the next stop (except for last stop)
         if (i < optimizedStops.length - 1) {
           cumulativeDuration += 5;
         }
       }
-
-      // Calculate estimated arrival time using cumulative duration up to this stop
-      const estimatedArrival = new Date(currentTime + (cumulativeDuration * 60000));
-      
-      waypoints.push({
-        latitude: stop.latitude,
-        longitude: stop.longitude,
-        address: stop.address,
-        estimatedArrival: estimatedArrival.toISOString(),
-      });
     }
 
     return {
