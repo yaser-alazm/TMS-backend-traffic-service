@@ -316,11 +316,12 @@ export class RouteOptimizationService {
 
     this.logger.log(`Publishing route optimized event to Kafka: ${event.eventId}`);
     
-    this.kafkaService.publishEvent('route-optimization-events', event).then(() => {
+    try {
+      await this.kafkaService.publishEvent('route-optimization-events', event)
       this.logger.log(`Route optimized event published: ${event.eventId}`);
-    }).catch(error => {
-      this.logger.warn(`Failed to publish route optimized event: ${error.message}`);
-    });
+    } catch (error) {
+      this.logger.warn(`Failed to publish route optimized event: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   private async publishRouteUpdateRequestedEvent(
