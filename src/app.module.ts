@@ -23,8 +23,7 @@ import { RolesGuard } from './guards/roles.guard';
       envFilePath: ['.env', '.env.local'],
     }),
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'your-secret-key',
-      signOptions: { expiresIn: '1h' },
+      publicKey: process.env.JWT_PUBLIC_KEY_PEM,
       verifyOptions: {
         algorithms: ['RS256'],
         issuer: process.env.AUTH_ISSUER || 'yatms-user-service',
